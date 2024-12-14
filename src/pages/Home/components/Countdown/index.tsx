@@ -1,15 +1,31 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { CountdownContainer, Separator } from "./styles";
 import { differenceInSeconds } from "date-fns";
+import { CycleContext } from "../..";
 
-interface CountdownProps {
-	activeCycle: any;
-}
-
-export function Countdown({}: CountdownProps) {
-	const [amountSecondsPast, setAmountSecondsPast] = useState(0);
+export function Countdown() {
+	const {
+		activeCycle,
+		markCurrentCycleAsFinished,
+		amountSecondsPast,
+		setSecondsPassed,
+	} = useContext(CycleContext);
 
 	const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
+
+	const currentSeconds = activeCycle ? totalSeconds - amountSecondsPast : 0;
+
+	const minutesAmount = Math.floor(currentSeconds / 60);
+	const secondsAmount = currentSeconds % 60;
+
+	const minutes = String(minutesAmount).padStart(2, "0");
+	const seconds = String(secondsAmount).padStart(2, "0");
+
+	useEffect(() => {
+		if (activeCycle) {
+			document.title = `${minutes}:${seconds}`;
+		}
+	}, [minutes, seconds, activeCycle]);
 
 	useEffect(() => {
 		let interval: NodeJS.Timeout;
@@ -21,19 +37,11 @@ export function Countdown({}: CountdownProps) {
 				);
 
 				if (secondsDifference > totalSeconds) {
-					setActiveCycleId(null);
-
-					setAmountSecondsPast(totalSeconds);
-					setCycles((state) =>
-						state.map((cycle) => {
-							if (cycle.id === activeCycleId) {
-								return { ...cycle, interruptedDate: new Date() };
-							}
-							return cycle;
-						}),
-					);
+					markCurrentCycleAsFinished();
+					setSecondsPassed(totalSeconds);
+					clearInterval(interval);
 				} else {
-					setAmountSecondsPast(secondsDifference);
+					setSecondsPassed(secondsDifference);
 				}
 			}, 1000);
 		}
@@ -41,7 +49,7 @@ export function Countdown({}: CountdownProps) {
 		return () => {
 			clearInterval(interval);
 		};
-	}, [activeCycle, activeCycleId, totalSeconds]);
+	}, [activeCycle, totalSeconds, markCurrentCycleAsFinished]);
 
 	return (
 		<CountdownContainer>
